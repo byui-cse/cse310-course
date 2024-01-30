@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/styles/default.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markdown-it-texmath/css/texmath.min.css">
+<link rel="stylesheet" href="file:///c:\Users\cmacbeth\.vscode\extensions\goessner.mdmath-2.7.4\themes\default\style.css">
+
+</head>
+<body class="markdown-body">
+<h1 dir="auto" id="cse-310-%E2%80%93-cloud-database-workshop">CSE 310 – Cloud Database Workshop</h1>
+<h2 dir="auto" id="example-classroom-code">Example Classroom Code</h2>
+<ul dir="auto">
+<li dir="auto">Starting Code: <a href="https://replit.com/@cmacbeth/CSE310CloudDBWorkshop">https://replit.com/@cmacbeth/CSE310CloudDBWorkshop</a></li>
+<li dir="auto">Solution Code: <a href="https://replit.com/@cmacbeth/CSE310CloudDBWorkshopSolution">https://replit.com/@cmacbeth/CSE310CloudDBWorkshopSolution</a></li>
+</ul>
+<h2 dir="auto" id="useful-reference-links">Useful Reference Links</h2>
+<ul dir="auto">
+<li dir="auto"><a href="https://firebase.google.com/docs/firestore">https://firebase.google.com/docs/firestore</a></li>
+</ul>
+<h2 dir="auto" id="firestore-structure">Firestore Structure</h2>
+<p dir="auto">Firestore is a non-SQL (or key/value pair) cloud database provided by Google.  In firestore, instead of table, columns, and rows, we have collections, documents, and fields.</p>
+<p dir="auto"><img src="firestore1.png" alt="firestore" data-src="firestore1.png"></p>
+<p dir="auto">A collection is like a table.  Each document in a collection is like a row in a table.  Each field in a document is like a column value in a row of a table.</p>
+<p dir="auto">Each document name (or ID) must be unique.  The name could be meaningful like the picture above or the name could be an auto-generated value like the picture below.  The auto-generated values are guarenteed to be unique.</p>
+<p dir="auto"><img src="firestore2.png" alt="firestore" data-src="firestore2.png"></p>
+<h2 dir="auto" id="python-firestore-library">Python Firestore Library</h2>
+<p dir="auto">The <code>firebase_admin</code> library provides all of the functions to communicate to Firestore using Python.</p>
+<h3 dir="auto" id="initialization">Initialization</h3>
+<p dir="auto">To initialize the connection, you will need to download the service account json file.  To find this on the Firestore website, goto the Project Settings, select the Service Accounts tab, press Create Service Account, and the prses Generate New Private Key.</p>
+<p dir="auto"><img src="firestore_service_account.png" alt="firestore" data-src="firestore_service_account.png"></p>
+<p dir="auto">The json file will download.  You must include this file with your code but you should not put this file into GitHub as it contains private information.</p>
+<p dir="auto">In your source code, you need to use this file to initialize firestore.</p>
+<pre><code class="code-line language-python" dir="auto"><span class="hljs-keyword">import</span> firebase_admin
+<span class="hljs-keyword">from</span> firebase_admin <span class="hljs-keyword">import</span> credentials
+<span class="hljs-keyword">from</span> firebase_admin <span class="hljs-keyword">import</span> firestore
+<span class="hljs-keyword">from</span> google.cloud.firestore_v1.base_query <span class="hljs-keyword">import</span> FieldFilter
+
+<span class="hljs-comment"># Setup Google Cloud Key - The json file is obtained by going to </span>
+<span class="hljs-comment"># Project Settings, Service Accounts, Create Service Account, and then</span>
+<span class="hljs-comment"># Generate New Private Key</span>
+cred = credentials.Certificate(<span class="hljs-string">&quot;YOUR_FILE_HERE.json&quot;</span>)
+firebase_admin.initialize_app(cred)
+
+<span class="hljs-comment"># Get reference to database</span>
+db = firestore.client()
+</code></pre>
+<h3 dir="auto" id="writing-data">Writing Data</h3>
+<p dir="auto">When we write to Firestore, we must specify the collection, the document, and the fields.  The fields are represented by a Python dictionary.</p>
+<pre><code class="code-line language-python" dir="auto">data = {<span class="hljs-string">&quot;price&quot;</span> : price, 
+        <span class="hljs-string">&quot;popular&quot;</span> : popular,
+        <span class="hljs-string">&quot;qty&quot;</span> : qty}
+</code></pre>
+<p dir="auto">The document can either be specified (make sure its unique if you are adding new data) or auto-generated.  The code below will either create a new Pencil document or will update a pre-existing Pencil object with the dictionary data.</p>
+<pre><code class="code-line language-python" dir="auto">db.collection(<span class="hljs-string">&quot;inventory&quot;</span>).document(<span class="hljs-string">&quot;Pencil&quot;</span>).<span class="hljs-built_in">set</span>(data)
+</code></pre>
+<p dir="auto">If you wanted to update a single field in a document, the <code>update</code> function can be used as well.</p>
+<pre><code class="code-line language-python" dir="auto">db.collection(<span class="hljs-string">&quot;inventory&quot;</span>).document(<span class="hljs-string">&quot;Pencil&quot;</span>).update({<span class="hljs-string">&quot;price&quot;</span> : <span class="hljs-number">0.99</span>})
+</code></pre>
+<p dir="auto">To create an auto-generated document ID, we need use the <code>add</code> function instead of the <code>set</code> function.  If we want to update a document that had an auto-genereated ID, then we need to save that ID number and use the <code>set</code> function like.</p>
+<pre><code class="code-line language-python" dir="auto">db.collection(<span class="hljs-string">&quot;log&quot;</span>).add(data)
+</code></pre>
+<h3 dir="auto" id="reading-data">Reading Data</h3>
+<p dir="auto">Reading data from a document requires the use of the <code>get</code> function.  To check if data was successfully read, then the <code>.exists</code> attribute can be checked.  The result that comes back can be convereted to a dictionary for easier use by using the <code>to_dict()</code> function.</p>
+<pre><code class="code-line language-python" dir="auto">result = db.collection(<span class="hljs-string">&quot;inventory&quot;</span>).document(<span class="hljs-string">&quot;Pencil&quot;</span>).get()
+<span class="hljs-keyword">if</span> result.exists:
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Pencil exists in the inventory.&quot;</span>)
+    data = result.to_dict()
+    <span class="hljs-built_in">print</span>(data)
+<span class="hljs-keyword">else</span>:
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;Pencil does not exist in the inventory.&quot;</span>)
+</code></pre>
+<p dir="auto">If you want to query for some or all of the documents, then the <code>get</code> function can be used on the collection.  The results can be used with a for loop.  The fields of each document in the results returned from the query can be accessed with the <code>to_dict()</code> function.  If you want the document name, you can use the <code>.id</code> attribute.</p>
+<pre><code class="code-line language-python" dir="auto">all_results = db.collection(<span class="hljs-string">&quot;inventory&quot;</span>).get()
+<span class="hljs-keyword">for</span> result <span class="hljs-keyword">in</span> all_results:
+    data = result.to_dict()
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;ID: <span class="hljs-subst">{result.<span class="hljs-built_in">id</span>}</span>&quot;</span>)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;Fields: <span class="hljs-subst">{data}</span>&quot;</span>)
+</code></pre>
+<p dir="auto">The <code>where</code> function can be used to query for specific documents in a collection.  You can chain multiple <code>where</code> functions together.  The <code>where</code> functions takes 3 parameters that make up a boolean expression.  Refer to the documentation online for limitations with filtering.</p>
+<pre><code class="code-line language-python" dir="auto">results1 = db.collection(<span class="hljs-string">&quot;inventory&quot;</span>).where(<span class="hljs-built_in">filter</span>=FieldFilter(<span class="hljs-string">&quot;price&quot;</span>, <span class="hljs-string">&quot;&lt;=&quot;</span>, <span class="hljs-number">5.00</span>)).get()
+results2 = db.collection(<span class="hljs-string">&quot;inventory&quot;</span>).where(<span class="hljs-built_in">filter</span>=FieldFilter(<span class="hljs-string">&quot;popular&quot;</span>, <span class="hljs-string">&quot;==&quot;</span>, <span class="hljs-literal">False</span>)).where(<span class="hljs-built_in">filter</span>=FieldFilter(<span class="hljs-string">&quot;price&quot;</span>, <span class="hljs-string">&quot;&gt;=&quot;</span>, <span class="hljs-number">100.00</span>)).get()
+</code></pre>
+<p dir="auto">The second example above will require that an index be created on the Firestore website.  The error message you will receive prior to creating the index will provide a URL to auto-create the index.</p>
+<h3 dir="auto" id="real-time-data-notification">Real-Time Data Notification</h3>
+<p dir="auto">You can register for notifications based on a query.  For example, this code will call the <code>notify_bad_price</code> if any of the documents has a price field less than or equal to 0.  The call to <code>notify_bad_price</code> will be asynchronous and on a separate thread.</p>
+<pre><code class="code-line language-python" dir="auto">db.collection(<span class="hljs-string">&quot;inventory&quot;</span>).where(<span class="hljs-built_in">filter</span>=FieldFilter(<span class="hljs-string">&quot;price&quot;</span>, <span class="hljs-string">&quot;&lt;=&quot;</span>, <span class="hljs-number">0</span>)).on_snapshot(notify_bad_price)
+</code></pre>
+<p dir="auto">The callback function <code>notify_bad_price</code> must have 3 parameters to hold the data results, a summary of what changed, and the time the data was read. If you need to refresh your data, then the data results should be used.  The data results will contain the full result of the query. If you want to do something different based on whether something was added, modified, or removed from the query, then changes should be used.</p>
+<ul dir="auto">
+<li dir="auto">ADDED = New document added to the query results</li>
+<li dir="auto">MODIFIED = Already existing document in the query results was modified</li>
+<li dir="auto">REMOVED = Previously existing document in the query results was removed</li>
+</ul>
+<pre><code class="code-line language-python" dir="auto"><span class="hljs-keyword">def</span> <span class="hljs-title function_">notify_bad_price</span>(<span class="hljs-params">results, changes, read_time</span>):
+    <span class="hljs-keyword">for</span> change <span class="hljs-keyword">in</span> changes:
+        <span class="hljs-keyword">if</span> change.<span class="hljs-built_in">type</span>.name == <span class="hljs-string">&quot;ADDED&quot;</span>: 
+            <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;Item Added to the Query: <span class="hljs-subst">{change.document.<span class="hljs-built_in">id</span>}</span>&quot;</span>)
+        <span class="hljs-keyword">elif</span> change.<span class="hljs-built_in">type</span>.name == <span class="hljs-string">&quot;MODIFIED&quot;</span>:
+            <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;Existing Item in Query was Modified: <span class="hljs-subst">{change.document.<span class="hljs-built_in">id</span>}</span>&quot;</span>)
+        <span class="hljs-keyword">elif</span> change.<span class="hljs-built_in">type</span>.name == <span class="hljs-string">&quot;REMOVED&quot;</span>:
+            <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;Previously Existing Item in Query was Removed: <span class="hljs-subst">{change.document.<span class="hljs-built_in">id</span>}</span>&quot;</span>)
+</code></pre>
+<h3 dir="auto" id="deleting-data">Deleting Data</h3>
+<p dir="auto">To remove a document, we use the <code>delete</code> function.  We can also use the <code>update</code> function if we want to remove a single field within a document.  When deleting a single field, we use the <code>firestore.DELETE_FIELD</code> value.</p>
+<pre><code class="code-line language-python" dir="auto">db.collection(<span class="hljs-string">&quot;inventory&quot;</span>).document(<span class="hljs-string">&quot;Pencil&quot;</span>).delete()
+
+db.collection(<span class="hljs-string">&quot;inventory&quot;</span>).document(<span class="hljs-string">&quot;Toaster&quot;</span>).update({<span class="hljs-string">&quot;price&quot;</span> : firestore.DELETE_FIELD})
+</code></pre>
+
+</body>
+</html>

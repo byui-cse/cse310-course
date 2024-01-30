@@ -8,7 +8,6 @@
 ## Useful Reference Links
 
 * https://firebase.google.com/docs/firestore
-* https://towardsdatascience.com/nosql-on-the-cloud-with-python-55a1383752fc
 
 ## Firestore Structure
 
@@ -37,17 +36,16 @@ The json file will download.  You must include this file with your code but you 
 In your source code, you need to use this file to initialize firestore. 
 
 ```python
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
+
 # Setup Google Cloud Key - The json file is obtained by going to 
 # Project Settings, Service Accounts, Create Service Account, and then
 # Generate New Private Key
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"]  = "YOUR_FILE_NAME_HERE.json"
-
-# Use the application default credentials.  The projectID is obtianed 
-# by going to Project Settings and then General.
-cred = credentials.ApplicationDefault()
-firebase_admin.initialize_app(cred, {
-    'projectId': 'YOUR_PROJECT_NAME_HERE',
-})
+cred = credentials.Certificate("YOUR_FILE_HERE.json")
+firebase_admin.initialize_app(cred)
 
 # Get reference to database
 db = firestore.client()
@@ -105,11 +103,11 @@ for result in all_results:
     print(f"Fields: {data}")
 ```
 
-The `where` function can be used to query for specific documents in a collection.  You can chain multiple `where` functions together.  The `where` functions takes 3 parameters that make up a boolean expression.  
+The `where` function can be used to query for specific documents in a collection.  You can chain multiple `where` functions together.  The `where` functions takes 3 parameters that make up a boolean expression.  Refer to the documentation online for limitations with filtering.
 
 ```python
-results1 = db.collection("inventory").where("price", "<=", 5.00).get()
-results2 = db.collection("inventory").where("popular", "==", False).where("price", ">=", 100.00).get()
+results1 = db.collection("inventory").where(filter=FieldFilter("price", "<=", 5.00)).get()
+results2 = db.collection("inventory").where(filter=FieldFilter("popular", "==", False)).where(filter=FieldFilter("price", ">=", 100.00)).get()
 ```
 
 The second example above will require that an index be created on the Firestore website.  The error message you will receive prior to creating the index will provide a URL to auto-create the index.
@@ -119,7 +117,7 @@ The second example above will require that an index be created on the Firestore 
 You can register for notifications based on a query.  For example, this code will call the `notify_bad_price` if any of the documents has a price field less than or equal to 0.  The call to `notify_bad_price` will be asynchronous and on a separate thread.
 
 ```python
-db.collection("inventory").where("price", "<=", 0).on_snapshot(notify_bad_price)
+db.collection("inventory").where(filter=FieldFilter("price", "<=", 0)).on_snapshot(notify_bad_price)
 ```
 
 The callback function `notify_bad_price` must have 3 parameters to hold the data results, a summary of what changed, and the time the data was read. If you need to refresh your data, then the data results should be used.  The data results will contain the full result of the query. If you want to do something different based on whether something was added, modified, or removed from the query, then changes should be used.
